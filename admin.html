@@ -6,103 +6,125 @@
   <title>Textify Admin — Moderation</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: linear-gradient(to bottom right, #0f172a, #0b1220); color: #e6eef8; font-family: Inter, sans-serif; }
-    .card { background: rgba(17,24,39,0.6); border: 1px solid rgba(148,163,184,0.06); border-radius: 12px; backdrop-filter: blur(6px); }
-    .small { font-size: 0.85rem; color: #94a3b8;}
+    body {
+      background: linear-gradient(to bottom right, #0f172a, #0b1220);
+      color: #e6eef8;
+      font-family: Inter, sans-serif;
+    }
+    .card {
+      background: rgba(17,24,39,0.7);
+      border: 1px solid rgba(148,163,184,0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .small { font-size: 0.85rem; color: #94a3b8; }
     .pill { background: rgba(99,102,241,0.12); color:#c7c9ff; padding:4px 8px; border-radius:999px; font-weight:600; }
-    .danger { background:#7f1d1d; color: white }
+    @media (max-width: 768px) {
+      body { padding: 0.5rem; }
+      header { flex-direction: column; gap: 1rem; text-align: center; }
+      main { grid-template-columns: 1fr !important; }
+      aside { order: -1; }
+    }
   </style>
 </head>
-<body class="min-h-screen p-8">
+<body class="min-h-screen p-6 sm:p-8">
 
-  <div class="max-w-6xl mx-auto">
-    <header class="flex items-center justify-between mb-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- HEADER -->
+    <header class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-indigo-300">Textify Admin — Moderation</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-indigo-300">Textify Admin — Moderation</h1>
         <div class="small mt-1">Secure dashboard — admin actions require a valid admin key.</div>
       </div>
 
-      <div class="flex items-center gap-4">
-        <div class="card px-4 py-3 text-center">
+      <div class="flex flex-wrap justify-center sm:justify-end gap-4">
+        <div class="card px-4 py-3 text-center w-32">
           <div class="text-xs small">Online</div>
-          <div id="userCount" class="text-3xl font-bold text-indigo-300">--</div>
+          <div id="userCount" class="text-2xl sm:text-3xl font-bold text-indigo-300">--</div>
           <div class="small" id="lastUpdated">--</div>
         </div>
 
-        <div class="card px-4 py-3">
+        <div class="card px-4 py-3 w-32 text-center">
           <div class="small mb-1">Auto Refresh</div>
-          <button id="toggleAuto" class="px-4 py-2 rounded-md bg-slate-700 hover:bg-slate-600">OFF</button>
+          <button id="toggleAuto" class="px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600 text-sm">OFF</button>
         </div>
       </div>
     </header>
 
-    <main class="grid grid-cols-3 gap-6">
-      <!-- Reports -->
-      <section class="col-span-2 card p-6">
+    <!-- MAIN -->
+    <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- REPORTS -->
+      <section class="md:col-span-2 card p-5 sm:p-6 flex flex-col">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold">Recent Reports</h2>
+          <h2 class="text-lg sm:text-xl font-semibold">Recent Reports</h2>
           <div class="small">showing latest 50</div>
         </div>
 
-        <div id="reportsList" class="space-y-3 max-h-[60vh] overflow-auto pr-2">
-          <!-- Filled by JS -->
-        </div>
+        <div id="reportsList" class="space-y-3 flex-1 overflow-y-auto max-h-[60vh] pr-2"></div>
 
-        <div class="mt-4 flex gap-2">
-          <button id="refreshReports" class="bg-indigo-600 px-4 py-2 rounded-md">Refresh</button>
-          <button id="clearReports" class="bg-slate-700 px-4 py-2 rounded-md">Clear (local)</button>
+        <div class="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+          <button id="refreshReports" class="bg-indigo-600 px-4 py-2 rounded-md text-sm">Refresh</button>
+          <button id="clearReports" class="bg-slate-700 px-4 py-2 rounded-md text-sm">Clear (local)</button>
         </div>
       </section>
 
-      <!-- Controls & Bans -->
-      <aside class="card p-6 flex flex-col gap-4">
+      <!-- SIDEBAR -->
+      <aside class="card p-5 sm:p-6 flex flex-col gap-5">
+        <!-- ONLINE USERS -->
+        <div>
+          <h3 class="font-semibold mb-2">Online Users</h3>
+          <div id="onlineUsers" class="text-xs small max-h-32 overflow-auto mb-3"></div>
+          <button id="refreshUsers" class="bg-indigo-600 px-3 py-2 rounded-md text-sm w-full sm:w-auto">Refresh</button>
+        </div>
+
+        <!-- BANS -->
         <div>
           <h3 class="font-semibold mb-2">Ban / Unban</h3>
-          <input id="banUserId" placeholder="User ID to ban" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
-          <input id="banIp" placeholder="IP to ban (optional)" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
-          <div class="flex gap-2">
-            <button id="banBtn" class="bg-red-600 px-4 py-2 rounded-md">Ban</button>
-            <button id="unbanBtn" class="bg-slate-600 px-4 py-2 rounded-md">Unban</button>
+          <input id="banUserId" placeholder="User ID" class="w-full mb-2 px-3 py-2 rounded bg-slate-800 text-sm" />
+          <input id="banIp" placeholder="IP (optional)" class="w-full mb-2 px-3 py-2 rounded bg-slate-800 text-sm" />
+          <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+            <button id="banBtn" class="bg-red-600 px-4 py-2 rounded-md text-sm">Ban</button>
+            <button id="unbanBtn" class="bg-slate-600 px-4 py-2 rounded-md text-sm">Unban</button>
           </div>
         </div>
 
         <div>
           <h3 class="font-semibold mb-2">Banned Lists</h3>
-          <div class="small mb-2">IPs</div>
+          <div class="small mb-1">IPs</div>
           <div id="bannedIps" class="text-xs small max-h-24 overflow-auto mb-3"></div>
-          <div class="small mb-2">User IDs</div>
+          <div class="small mb-1">User IDs</div>
           <div id="bannedUsers" class="text-xs small max-h-24 overflow-auto"></div>
         </div>
 
+        <!-- ADMIN KEY -->
         <div>
-          <h3 class="font-semibold mb-2">Admin</h3>
-          <input id="adminKey" type="password" placeholder="ADMIN_KEY" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
-          <div class="small">Keep this secret. Stored only in your browser session when you use the dashboard.</div>
+          <h3 class="font-semibold mb-2">Admin Key</h3>
+          <input id="adminKey" type="password" placeholder="Enter ADMIN_KEY"
+            class="w-full mb-2 px-3 py-2 rounded bg-slate-800 text-sm" />
+          <div class="small">Stored only in your browser session while using this page.</div>
         </div>
       </aside>
     </main>
 
-    <footer class="mt-6 small text-slate-500">Tip: click a report's "Ban IP" or "Ban User" to act quickly.</footer>
+    <footer class="small text-slate-500 text-center sm:text-left">Tip: click “Ban User” or “Ban IP” beside a report to act quickly.</footer>
   </div>
 
   <script>
-    // CONFIG
-    const WS_URL = 'wss://textify-dy2p.onrender.com'; // update if needed
+    const WS_URL = 'wss://textify-dy2p.onrender.com';
     const AUTO_INTERVAL = 5000;
-
-    let ws;
-    let autoRefresh = false;
-    let autoIntervalId;
+    let ws, autoRefresh = false, autoIntervalId;
 
     const userCountEl = document.getElementById('userCount');
     const lastUpdatedEl = document.getElementById('lastUpdated');
     const reportsListEl = document.getElementById('reportsList');
     const bannedIpsEl = document.getElementById('bannedIps');
     const bannedUsersEl = document.getElementById('bannedUsers');
+    const onlineUsersEl = document.getElementById('onlineUsers');
 
     const toggleAutoBtn = document.getElementById('toggleAuto');
     const refreshReportsBtn = document.getElementById('refreshReports');
     const clearReportsBtn = document.getElementById('clearReports');
+    const refreshUsersBtn = document.getElementById('refreshUsers');
 
     const banUserIdInput = document.getElementById('banUserId');
     const banIpInput = document.getElementById('banIp');
@@ -110,79 +132,62 @@
     const unbanBtn = document.getElementById('unbanBtn');
     const adminKeyInput = document.getElementById('adminKey');
 
-    // Start WS
+    function adminKey() { return adminKeyInput.value.trim(); }
+
+    // --- WEBSOCKET ---
     function initWS() {
       ws = new WebSocket(WS_URL);
-
       ws.onopen = () => {
         console.log('Connected');
-        fetchUserCount();
-        fetchReports();
-        fetchBans();
+        fetchAll();
       };
-
       ws.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
-          if (data.type === 'user_count') {
-            updateUserCount(data.count);
-          } else if (data.type === 'reports') {
-            renderReports(data.reports || []);
-          } else if (data.type === 'bans') {
-            renderBans(data.bannedIPs || [], data.bannedUserIds || []);
-          } else if (data.type === 'ban_ack' || data.type === 'unban_ack') {
-            // refresh view
-            fetchBans();
-          }
-        } catch (err) {
-          console.error('Invalid message', err);
-        }
+          if (data.type === 'user_count') updateUserCount(data.count);
+          else if (data.type === 'reports') renderReports(data.reports || []);
+          else if (data.type === 'bans') renderBans(data.bannedIPs || [], data.bannedUserIds || []);
+          else if (data.type === 'online_users') renderOnlineUsers(data.users || []);
+        } catch (err) { console.error('Invalid message', err); }
       };
-
       ws.onclose = () => {
-        console.warn('WS closed, reconnecting in 3s...');
-        clearAuto();
+        console.warn('WS closed, reconnecting...');
+        clearInterval(autoIntervalId);
         setTimeout(initWS, 3000);
       };
-
       ws.onerror = (err) => console.error('WS error', err);
     }
 
-    // Admin key helper
-    function adminKey() {
-      return adminKeyInput.value.trim();
+    // --- FETCH HELPERS ---
+    function fetchAll() {
+      fetchUserCount(); fetchReports(); fetchBans(); fetchOnlineUsers();
     }
-
-    // Requests
     function fetchUserCount() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'get_user_count', adminKey: adminKey() }));
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'get_user_count', adminKey: adminKey() }));
     }
-
     function fetchReports() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'get_reports', adminKey: adminKey() }));
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'get_reports', adminKey: adminKey() }));
     }
-
     function fetchBans() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'get_bans', adminKey: adminKey() }));
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'get_bans', adminKey: adminKey() }));
+    }
+    function fetchOnlineUsers() {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'get_online_users', adminKey: adminKey() }));
     }
 
+    // --- ACTIONS ---
     function banAction(userId, ip) {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (ws.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: 'ban_user', adminKey: adminKey(), userId, ip }));
-      // refresh after small delay
-      setTimeout(fetchBans, 700);
+      setTimeout(fetchBans, 500);
     }
-
     function unbanAction(userId, ip) {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (ws.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: 'unban_user', adminKey: adminKey(), userId, ip }));
-      setTimeout(fetchBans, 700);
+      setTimeout(fetchBans, 500);
     }
 
-    // UI updates
+    // --- RENDER ---
     function updateUserCount(n) {
       userCountEl.textContent = n;
       lastUpdatedEl.textContent = 'Last: ' + new Date().toLocaleTimeString();
@@ -190,93 +195,85 @@
 
     function renderReports(list) {
       reportsListEl.innerHTML = '';
-      if (!list || list.length === 0) {
-        reportsListEl.innerHTML = '<div class="small text-slate-400">No reports</div>';
-        return;
-      }
-      // limit to 50
-      const limited = list.slice(0,50);
-      limited.forEach(r => {
+      if (!list || list.length === 0)
+        return (reportsListEl.innerHTML = '<div class="small text-slate-400">No reports</div>');
+      list.slice(0, 50).forEach((r) => {
         const div = document.createElement('div');
-        div.className = 'p-3 bg-slate-800 rounded flex justify-between items-start gap-4';
+        div.className = 'p-3 bg-slate-800 rounded flex justify-between items-start gap-3 flex-wrap';
         div.innerHTML = `
           <div>
-            <div class="text-sm"><span class="pill">${r.reportedId || 'unknown'}</span> <span class="small ml-2">${r.reportedIp}</span></div>
+            <div class="text-sm"><span class="pill">${r.reportedId || 'unknown'}</span>
+              <span class="small ml-2">${r.reportedIp}</span></div>
             <div class="small mt-1">${r.reason}</div>
             <div class="small text-slate-500 mt-1">${new Date(r.time).toLocaleString()} — reporter: ${r.reporterId}</div>
           </div>
-          <div class="flex flex-col items-end gap-2">
-            <button class="px-3 py-1 rounded bg-red-600 text-white ban-user">Ban User</button>
-            <button class="px-3 py-1 rounded bg-orange-600 text-white ban-ip">Ban IP</button>
-          </div>
-        `;
-        // actions
-        div.querySelector('.ban-user').addEventListener('click', () => {
-          banAction(r.reportedId, null);
-        });
-        div.querySelector('.ban-ip').addEventListener('click', () => {
-          banAction(null, r.reportedIp);
-        });
-
+          <div class="flex flex-col gap-2 mt-2 sm:mt-0">
+            <button class="px-3 py-1 rounded bg-red-600 text-white ban-user text-sm">Ban User</button>
+            <button class="px-3 py-1 rounded bg-orange-600 text-white ban-ip text-sm">Ban IP</button>
+          </div>`;
+        div.querySelector('.ban-user').onclick = () => banAction(r.reportedId, null);
+        div.querySelector('.ban-ip').onclick = () => banAction(null, r.reportedIp);
         reportsListEl.appendChild(div);
       });
     }
 
     function renderBans(ips, users) {
-      bannedIpsEl.innerHTML = ips.length ? ips.map(i => `<div class="flex justify-between items-center gap-2 mb-1"><div class="text-xs">${i}</div><button class="text-xs px-2 py-1 bg-slate-700 rounded unban-ip" data-ip="${i}">Unban</button></div>`).join('') : '<div class="small text-slate-400">No banned IPs</div>';
-      bannedUsersEl.innerHTML = users.length ? users.map(u => `<div class="flex justify-between items-center gap-2 mb-1"><div class="text-xs">${u}</div><button class="text-xs px-2 py-1 bg-slate-700 rounded unban-user" data-uid="${u}">Unban</button></div>`).join('') : '<div class="small text-slate-400">No banned users</div>';
+      bannedIpsEl.innerHTML = ips.length
+        ? ips.map(i => `<div class="flex justify-between items-center gap-2 mb-1">
+            <div class="text-xs break-all">${i}</div>
+            <button class="text-xs px-2 py-1 bg-slate-700 rounded unban-ip" data-ip="${i}">Unban</button>
+          </div>`).join('')
+        : '<div class="small text-slate-400">No banned IPs</div>';
+      bannedUsersEl.innerHTML = users.length
+        ? users.map(u => `<div class="flex justify-between items-center gap-2 mb-1">
+            <div class="text-xs break-all">${u}</div>
+            <button class="text-xs px-2 py-1 bg-slate-700 rounded unban-user" data-uid="${u}">Unban</button>
+          </div>`).join('')
+        : '<div class="small text-slate-400">No banned users</div>';
 
-      // attach handlers
-      document.querySelectorAll('.unban-ip').forEach(btn => {
-        btn.addEventListener('click', () => unbanAction(null, btn.dataset.ip));
-      });
-      document.querySelectorAll('.unban-user').forEach(btn => {
-        btn.addEventListener('click', () => unbanAction(btn.dataset.uid, null));
-      });
+      document.querySelectorAll('.unban-ip').forEach(btn =>
+        btn.addEventListener('click', () => unbanAction(null, btn.dataset.ip)));
+      document.querySelectorAll('.unban-user').forEach(btn =>
+        btn.addEventListener('click', () => unbanAction(btn.dataset.uid, null)));
     }
 
-    // Controls
+    function renderOnlineUsers(list) {
+      onlineUsersEl.innerHTML = list.length
+        ? list.map(u => `<div class="flex justify-between mb-1">
+            <div class="text-xs break-all">${u.userId}</div>
+            <div class="small text-slate-500">${u.ip}</div>
+          </div>`).join('')
+        : '<div class="small text-slate-400">No active users</div>';
+    }
+
+    // --- BUTTONS ---
     toggleAutoBtn.addEventListener('click', () => {
       autoRefresh = !autoRefresh;
       toggleAutoBtn.textContent = autoRefresh ? 'ON' : 'OFF';
+      clearInterval(autoIntervalId);
       if (autoRefresh) {
-        fetchUserCount();
-        fetchReports();
-        fetchBans();
-        autoIntervalId = setInterval(() => {
-          fetchUserCount();
-          fetchReports();
-          fetchBans();
-        }, AUTO_INTERVAL);
-      } else {
-        clearInterval(autoIntervalId);
+        fetchAll();
+        autoIntervalId = setInterval(fetchAll, AUTO_INTERVAL);
       }
     });
-
-    refreshReportsBtn.addEventListener('click', fetchReports);
-    clearReportsBtn.addEventListener('click', () => { reportsListEl.innerHTML = '<div class="small text-slate-400">Cleared locally</div>'; });
-
-    banBtn.addEventListener('click', () => {
+    refreshReportsBtn.onclick = fetchReports;
+    clearReportsBtn.onclick = () => (reportsListEl.innerHTML = '<div class="small text-slate-400">Cleared locally</div>');
+    refreshUsersBtn.onclick = fetchOnlineUsers;
+    banBtn.onclick = () => {
       const u = banUserIdInput.value.trim() || null;
       const ip = banIpInput.value.trim() || null;
       if (!u && !ip) return alert('Provide userId or IP');
       banAction(u, ip);
-      banUserIdInput.value = '';
-      banIpInput.value = '';
-      setTimeout(fetchBans, 700);
-    });
-
-    unbanBtn.addEventListener('click', () => {
+      banUserIdInput.value = banIpInput.value = '';
+    };
+    unbanBtn.onclick = () => {
       const u = banUserIdInput.value.trim() || null;
       const ip = banIpInput.value.trim() || null;
-      if (!u && !ip) return alert('Provide userId or IP to unban');
+      if (!u && !ip) return alert('Provide userId or IP');
       unbanAction(u, ip);
-      banUserIdInput.value = '';
-      banIpInput.value = '';
-      setTimeout(fetchBans, 700);
-    });
+      banUserIdInput.value = banIpInput.value = '';
+    };
 
-    // init
     initWS();
   </script>
 </body>

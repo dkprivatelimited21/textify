@@ -8,10 +8,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
+    @keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.shake {
+  animation: shake 0.3s;
+}
     .animate-bounce { animation: bounce 0.6s infinite; }
     body {
       margin: 0;
@@ -143,42 +147,68 @@
       ws.onopen = () => console.log('Connected to server');
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-          case 'connected':
-            userId = data.userId;
-            break;
-          case 'searching':
-            searching = true;
-            updateUI();
-            addSystemMessage('Looking for someone to chat with...');
-            break;
-          case 'partner_found':
-            searching = false;
-            connected = true;
-            partnerId = data.partnerId || "unknown";
-            updateUI();
-            addSystemMessage('You are now chatting with a random stranger. Say hi!');
-            elements.messageInput.focus();
-            break;
-          case 'message':
-            addMessage('stranger', data.text);
-            break;
-          case 'typing':
-            showTypingIndicator(data.isTyping);
-            break;
-          case 'partner_disconnected':
-            addSystemMessage('Stranger disconnected.');
-            connected = false;
-            partnerId = null;
-            updateUI();
-            break;
-          case 'banned':
-            addSystemMessage('⚠ You have been banned: ' + (data.reason || 'Violation'));
-            ws.close();
-            break;
-        }
-      };
+  const data = JSON.parse(event.data);
+
+  switch (data.type) {
+    case 'connected':
+      userId = data.userId;
+      break;
+
+    case 'searching':
+      searching = true;
+      updateUI();
+      addSystemMessage('Looking for someone to chat with...');
+      break;
+
+    case 'partner_found':
+      searching = false;
+      connected = true;
+      partnerId = data.partnerId || "unknown";
+
+      // 🧹 Clear chat and extras
+      elements.messages.innerHTML = '';
+      showTypingIndicator(false);
+      elements.reportModal.classList.add('hidden');
+
+      updateUI();
+      addSystemMessage('You are now chatting with a random stranger. Say hi!');
+      elements.messageInput.focus();
+      break;
+
+    case 'message':
+      addMessage('stranger', data.text);
+      break;
+
+    case 'typing':
+      showTypingIndicator(data.isTyping);
+      break;
+
+    // ⚠️ New anti-bully warning handler
+    case 'warning':
+      addSystemMessage(data.text || '⚠ Please avoid using harmful language.');
+      // Optional: highlight input box for better feedback
+      elements.messageInput.classList.add('border-red-500');
+      setTimeout(() => elements.messageInput.classList.remove('border-red-500'), 1000);
+      break;
+
+    case 'partner_disconnected':
+      addSystemMessage('Stranger disconnected.');
+      connected = false;
+      partnerId = null;
+      updateUI();
+      break;
+
+    case 'banned':
+      addSystemMessage('⚠ You have been banned: ' + (data.reason || 'Violation'));
+      ws.close();
+      break;
+
+    default:
+      console.warn('Unknown message type:', data.type);
+      break;
+  }
+};
+
 
       ws.onclose = () => {
         addSystemMessage('Connection closed.');
