@@ -12,9 +12,7 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-5px); }
     }
-    .animate-bounce {
-      animation: bounce 0.6s infinite;
-    }
+    .animate-bounce { animation: bounce 0.6s infinite; }
     body {
       margin: 0;
       padding: 0;
@@ -24,12 +22,19 @@
       height: 100vh;
       overflow: hidden;
     }
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
+    ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-thumb {
       background-color: rgba(255,255,255,0.3);
       border-radius: 9999px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
     }
   </style>
 </head>
@@ -65,8 +70,9 @@
         <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-800"></div>
 
         <!-- Input -->
-        <div class="bg-slate-900 border-t border-slate-700 p-4 sticky bottom-0">
-          <div class="flex gap-2">
+        <div class="bg-slate-900 border-t border-slate-700 p-4 sticky bottom-0 flex items-center gap-3">
+          <button id="reportBtn" class="text-sm px-3 py-2 rounded bg-red-700 hover:bg-red-800 hidden">⚠ Report</button>
+          <div class="flex gap-2 flex-1">
             <input
               id="messageInput"
               type="text"
@@ -85,6 +91,26 @@
     </main>
   </div>
 
+  <!-- Report Modal -->
+  <div id="reportModal" class="modal hidden">
+    <div class="bg-slate-800 p-6 rounded-xl w-80 shadow-lg border border-slate-700">
+      <h3 class="text-lg font-semibold mb-4 text-red-400">Report User</h3>
+      <label class="block mb-2 text-sm">Reason:</label>
+      <select id="reportReason" class="w-full mb-3 bg-slate-900 border border-slate-600 text-white rounded px-3 py-2">
+        <option value="harassment">Harassment / Abuse</option>
+        <option value="inappropriate">Inappropriate Content</option>
+        <option value="spam">Spam / Advertising</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="reportDetails" rows="2" placeholder="Add details (optional)"
+        class="w-full mb-4 bg-slate-900 border border-slate-600 text-white rounded px-3 py-2 resize-none"></textarea>
+      <div class="flex justify-end gap-2">
+        <button id="cancelReport" class="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600">Cancel</button>
+        <button id="submitReport" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700">Submit</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Script -->
   <script>
     const WS_URL = 'wss://textify-dy2p.onrender.com';
@@ -92,8 +118,8 @@
     let connected = false;
     let searching = false;
     let typingTimeout = null;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
+    let userId = null;
+    let partnerId = null;
 
     const elements = {
       actionBtn: document.getElementById('actionBtn'),
@@ -103,70 +129,63 @@
       chatScreen: document.getElementById('chatScreen'),
       messages: document.getElementById('messages'),
       messageInput: document.getElementById('messageInput'),
-      sendBtn: document.getElementById('sendBtn')
+      sendBtn: document.getElementById('sendBtn'),
+      reportBtn: document.getElementById('reportBtn'),
+      reportModal: document.getElementById('reportModal'),
+      reportReason: document.getElementById('reportReason'),
+      reportDetails: document.getElementById('reportDetails'),
+      cancelReport: document.getElementById('cancelReport'),
+      submitReport: document.getElementById('submitReport')
     };
 
     function initWebSocket() {
-      try {
-        ws = new WebSocket(WS_URL);
+      ws = new WebSocket(WS_URL);
+      ws.onopen = () => console.log('Connected to server');
 
-        ws.onopen = () => {
-          console.log('Connected to server');
-          reconnectAttempts = 0;
-        };
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'connected':
+            userId = data.userId;
+            break;
+          case 'searching':
+            searching = true;
+            updateUI();
+            addSystemMessage('Looking for someone to chat with...');
+            break;
+          case 'partner_found':
+            searching = false;
+            connected = true;
+            partnerId = data.partnerId || "unknown";
+            updateUI();
+            addSystemMessage('You are now chatting with a random stranger. Say hi!');
+            elements.messageInput.focus();
+            break;
+          case 'message':
+            addMessage('stranger', data.text);
+            break;
+          case 'typing':
+            showTypingIndicator(data.isTyping);
+            break;
+          case 'partner_disconnected':
+            addSystemMessage('Stranger disconnected.');
+            connected = false;
+            partnerId = null;
+            updateUI();
+            break;
+          case 'banned':
+            addSystemMessage('⚠ You have been banned: ' + (data.reason || 'Violation'));
+            ws.close();
+            break;
+        }
+      };
 
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          switch (data.type) {
-            case 'connected':
-              break;
-            case 'searching':
-              searching = true;
-              updateUI();
-              addSystemMessage('Looking for someone to chat with...');
-              break;
-            case 'partner_found':
-              searching = false;
-              connected = true;
-              updateUI();
-              addSystemMessage('You are now chatting with a random stranger. Say hi!');
-              elements.messageInput.focus();
-              break;
-            case 'message':
-              addMessage('stranger', data.text);
-              break;
-            case 'typing':
-              showTypingIndicator(data.isTyping);
-              break;
-            case 'partner_disconnected':
-              addSystemMessage('Stranger disconnected.');
-              setTimeout(() => {
-                connected = false;
-                searching = false;
-                updateUI();
-                elements.messages.innerHTML = '';
-              }, 2000);
-              break;
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          addSystemMessage('Connection error. Trying to reconnect...');
-        };
-
-        ws.onclose = () => {
-          console.log('Disconnected');
-          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            setTimeout(initWebSocket, 2000 * reconnectAttempts);
-          } else {
-            addSystemMessage('Connection lost. Please refresh.');
-          }
-        };
-      } catch (error) {
-        addSystemMessage('Failed to connect.');
-      }
+      ws.onclose = () => {
+        addSystemMessage('Connection closed.');
+        connected = false;
+        searching = false;
+        updateUI();
+      };
     }
 
     function updateUI() {
@@ -178,6 +197,7 @@
         elements.actionBtn.className = 'flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition';
         elements.messageInput.disabled = true;
         elements.sendBtn.disabled = true;
+        elements.reportBtn.classList.add('hidden');
       } else {
         elements.welcomeScreen.classList.add('hidden');
         elements.chatScreen.classList.remove('hidden');
@@ -186,6 +206,7 @@
         elements.actionBtn.className = 'flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition';
         elements.messageInput.disabled = !connected;
         elements.sendBtn.disabled = !connected;
+        elements.reportBtn.classList.toggle('hidden', !connected);
       }
     }
 
@@ -218,7 +239,6 @@
     function showTypingIndicator(show) {
       const existing = document.getElementById('typingIndicator');
       if (existing) existing.remove();
-
       if (show) {
         const div = document.createElement('div');
         div.id = 'typingIndicator';
@@ -231,8 +251,7 @@
               <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
               <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
             </div>
-          </div>
-        `;
+          </div>`;
         elements.messages.appendChild(div);
         scrollToBottom();
       }
@@ -254,22 +273,14 @@
       addMessage('you', text);
       ws.send(JSON.stringify({ type: 'send_message', text }));
       elements.messageInput.value = '';
-      if (typingTimeout) clearTimeout(typingTimeout);
       ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
     }
 
     elements.actionBtn.addEventListener('click', () => {
       if (!connected && !searching) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'find_partner' }));
-        } else {
-          addSystemMessage('Connecting to server...');
-          initWebSocket();
-        }
+        ws.send(JSON.stringify({ type: 'find_partner' }));
       } else {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'disconnect_chat' }));
-        }
+        ws.send(JSON.stringify({ type: 'disconnect_chat' }));
         connected = false;
         searching = false;
         updateUI();
@@ -285,21 +296,34 @@
     elements.messageInput.addEventListener('input', () => {
       if (!ws || ws.readyState !== WebSocket.OPEN || !connected) return;
       ws.send(JSON.stringify({ type: 'typing', isTyping: true }));
-      if (typingTimeout) clearTimeout(typingTimeout);
+      clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
-        if (ws && ws.readyState === WebSocket.OPEN)
-          ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
+        ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
       }, 1000);
     });
 
-    window.addEventListener('load', () => {
-      initWebSocket();
-      updateUI();
+    // Reporting System
+    elements.reportBtn.addEventListener('click', () => {
+      elements.reportModal.classList.remove('hidden');
     });
 
-    window.addEventListener('beforeunload', () => {
-      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+    elements.cancelReport.addEventListener('click', () => {
+      elements.reportModal.classList.add('hidden');
     });
+
+    elements.submitReport.addEventListener('click', () => {
+      const reason = elements.reportReason.value;
+      const details = elements.reportDetails.value.trim();
+      const fullReason = details ? `${reason}: ${details}` : reason;
+      if (partnerId && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'report_user', reportedId: partnerId, reason: fullReason }));
+        addSystemMessage('⚠ Report submitted. Thank you for keeping Textify safe.');
+      }
+      elements.reportModal.classList.add('hidden');
+      elements.reportDetails.value = '';
+    });
+
+    window.addEventListener('load', initWebSocket);
   </script>
 </body>
 </html>

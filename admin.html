@@ -1,144 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Textify Admin Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Textify Admin — Moderation</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1828/1828884.png" />
-
   <style>
-    body {
-      background: linear-gradient(to bottom right, #0f172a, #1e293b);
-      color: #e2e8f0;
-      font-family: 'Inter', sans-serif;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .card {
-      background-color: rgba(30, 41, 59, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 1rem;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-    .card:hover {
-      border-color: #6366f1;
-      transform: translateY(-2px);
-    }
-    .pulse {
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
+    body { background: linear-gradient(to bottom right, #0f172a, #0b1220); color: #e6eef8; font-family: Inter, sans-serif; }
+    .card { background: rgba(17,24,39,0.6); border: 1px solid rgba(148,163,184,0.06); border-radius: 12px; backdrop-filter: blur(6px); }
+    .small { font-size: 0.85rem; color: #94a3b8;}
+    .pill { background: rgba(99,102,241,0.12); color:#c7c9ff; padding:4px 8px; border-radius:999px; font-weight:600; }
+    .danger { background:#7f1d1d; color: white }
   </style>
 </head>
-<body class="flex flex-col items-center justify-center">
+<body class="min-h-screen p-8">
 
-  <div class="text-center mb-10">
-    <h1 class="text-4xl font-bold text-indigo-400 mb-2">Textify Admin Dashboard</h1>
-    <p class="text-slate-400 text-sm">Monitor real-time chat activity securely</p>
+  <div class="max-w-6xl mx-auto">
+    <header class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-indigo-300">Textify Admin — Moderation</h1>
+        <div class="small mt-1">Secure dashboard — admin actions require a valid admin key.</div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="card px-4 py-3 text-center">
+          <div class="text-xs small">Online</div>
+          <div id="userCount" class="text-3xl font-bold text-indigo-300">--</div>
+          <div class="small" id="lastUpdated">--</div>
+        </div>
+
+        <div class="card px-4 py-3">
+          <div class="small mb-1">Auto Refresh</div>
+          <button id="toggleAuto" class="px-4 py-2 rounded-md bg-slate-700 hover:bg-slate-600">OFF</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid grid-cols-3 gap-6">
+      <!-- Reports -->
+      <section class="col-span-2 card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Recent Reports</h2>
+          <div class="small">showing latest 50</div>
+        </div>
+
+        <div id="reportsList" class="space-y-3 max-h-[60vh] overflow-auto pr-2">
+          <!-- Filled by JS -->
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button id="refreshReports" class="bg-indigo-600 px-4 py-2 rounded-md">Refresh</button>
+          <button id="clearReports" class="bg-slate-700 px-4 py-2 rounded-md">Clear (local)</button>
+        </div>
+      </section>
+
+      <!-- Controls & Bans -->
+      <aside class="card p-6 flex flex-col gap-4">
+        <div>
+          <h3 class="font-semibold mb-2">Ban / Unban</h3>
+          <input id="banUserId" placeholder="User ID to ban" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
+          <input id="banIp" placeholder="IP to ban (optional)" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
+          <div class="flex gap-2">
+            <button id="banBtn" class="bg-red-600 px-4 py-2 rounded-md">Ban</button>
+            <button id="unbanBtn" class="bg-slate-600 px-4 py-2 rounded-md">Unban</button>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Banned Lists</h3>
+          <div class="small mb-2">IPs</div>
+          <div id="bannedIps" class="text-xs small max-h-24 overflow-auto mb-3"></div>
+          <div class="small mb-2">User IDs</div>
+          <div id="bannedUsers" class="text-xs small max-h-24 overflow-auto"></div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Admin</h3>
+          <input id="adminKey" type="password" placeholder="ADMIN_KEY" class="w-full mb-2 px-3 py-2 rounded bg-slate-800" />
+          <div class="small">Keep this secret. Stored only in your browser session when you use the dashboard.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="mt-6 small text-slate-500">Tip: click a report's "Ban IP" or "Ban User" to act quickly.</footer>
   </div>
-
-  <div class="card p-8 w-[90%] max-w-md text-center shadow-xl">
-    <div class="text-6xl font-bold text-indigo-300 mb-3" id="userCount">--</div>
-    <p class="text-slate-400 mb-6">Users currently connected</p>
-
-    <div class="flex items-center justify-center gap-4">
-      <button id="refreshBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition">
-        Refresh Now
-      </button>
-      <button id="toggleAuto" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-lg transition">
-        Auto Refresh: OFF
-      </button>
-    </div>
-
-    <p id="statusMsg" class="text-xs text-slate-500 mt-6">Connecting to server...</p>
-  </div>
-
-  <footer class="absolute bottom-4 text-slate-500 text-xs">
-    &copy; 2025 Textify Admin | Secure Dashboard
-  </footer>
 
   <script>
-    // 🧠 CONFIG
-    const WS_URL = 'wss://textify-dy2p.onrender.com'; // your WebSocket server
-    const ADMIN_KEY = ''; // same as .env ADMIN_KEY
+    // CONFIG
+    const WS_URL = 'wss://textify-dy2p.onrender.com'; // update if needed
+    const AUTO_INTERVAL = 5000;
 
     let ws;
     let autoRefresh = false;
-    let refreshInterval;
+    let autoIntervalId;
 
     const userCountEl = document.getElementById('userCount');
-    const statusMsgEl = document.getElementById('statusMsg');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const toggleAutoBtn = document.getElementById('toggleAuto');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    const reportsListEl = document.getElementById('reportsList');
+    const bannedIpsEl = document.getElementById('bannedIps');
+    const bannedUsersEl = document.getElementById('bannedUsers');
 
-    // 🔌 Initialize WebSocket
+    const toggleAutoBtn = document.getElementById('toggleAuto');
+    const refreshReportsBtn = document.getElementById('refreshReports');
+    const clearReportsBtn = document.getElementById('clearReports');
+
+    const banUserIdInput = document.getElementById('banUserId');
+    const banIpInput = document.getElementById('banIp');
+    const banBtn = document.getElementById('banBtn');
+    const unbanBtn = document.getElementById('unbanBtn');
+    const adminKeyInput = document.getElementById('adminKey');
+
+    // Start WS
     function initWS() {
       ws = new WebSocket(WS_URL);
-      statusMsgEl.textContent = 'Connecting to WebSocket server...';
 
       ws.onopen = () => {
-        statusMsgEl.textContent = '🟢 Connected to server';
-        getUserCount();
+        console.log('Connected');
+        fetchUserCount();
+        fetchReports();
+        fetchBans();
       };
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'user_count') {
-          updateCount(data.count);
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.type === 'user_count') {
+            updateUserCount(data.count);
+          } else if (data.type === 'reports') {
+            renderReports(data.reports || []);
+          } else if (data.type === 'bans') {
+            renderBans(data.bannedIPs || [], data.bannedUserIds || []);
+          } else if (data.type === 'ban_ack' || data.type === 'unban_ack') {
+            // refresh view
+            fetchBans();
+          }
+        } catch (err) {
+          console.error('Invalid message', err);
         }
       };
 
       ws.onclose = () => {
-        statusMsgEl.textContent = '🔴 Disconnected. Reconnecting in 3s...';
-        clearInterval(refreshInterval);
+        console.warn('WS closed, reconnecting in 3s...');
+        clearAuto();
         setTimeout(initWS, 3000);
       };
 
-      ws.onerror = (err) => {
-        statusMsgEl.textContent = '⚠️ Error connecting to server.';
-        console.error(err);
-      };
+      ws.onerror = (err) => console.error('WS error', err);
     }
 
-    // 📊 Request count
-    function getUserCount() {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'get_user_count', adminKey: ADMIN_KEY }));
-        statusMsgEl.textContent = 'Fetching user count...';
+    // Admin key helper
+    function adminKey() {
+      return adminKeyInput.value.trim();
+    }
+
+    // Requests
+    function fetchUserCount() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'get_user_count', adminKey: adminKey() }));
+    }
+
+    function fetchReports() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'get_reports', adminKey: adminKey() }));
+    }
+
+    function fetchBans() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'get_bans', adminKey: adminKey() }));
+    }
+
+    function banAction(userId, ip) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'ban_user', adminKey: adminKey(), userId, ip }));
+      // refresh after small delay
+      setTimeout(fetchBans, 700);
+    }
+
+    function unbanAction(userId, ip) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'unban_user', adminKey: adminKey(), userId, ip }));
+      setTimeout(fetchBans, 700);
+    }
+
+    // UI updates
+    function updateUserCount(n) {
+      userCountEl.textContent = n;
+      lastUpdatedEl.textContent = 'Last: ' + new Date().toLocaleTimeString();
+    }
+
+    function renderReports(list) {
+      reportsListEl.innerHTML = '';
+      if (!list || list.length === 0) {
+        reportsListEl.innerHTML = '<div class="small text-slate-400">No reports</div>';
+        return;
       }
+      // limit to 50
+      const limited = list.slice(0,50);
+      limited.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'p-3 bg-slate-800 rounded flex justify-between items-start gap-4';
+        div.innerHTML = `
+          <div>
+            <div class="text-sm"><span class="pill">${r.reportedId || 'unknown'}</span> <span class="small ml-2">${r.reportedIp}</span></div>
+            <div class="small mt-1">${r.reason}</div>
+            <div class="small text-slate-500 mt-1">${new Date(r.time).toLocaleString()} — reporter: ${r.reporterId}</div>
+          </div>
+          <div class="flex flex-col items-end gap-2">
+            <button class="px-3 py-1 rounded bg-red-600 text-white ban-user">Ban User</button>
+            <button class="px-3 py-1 rounded bg-orange-600 text-white ban-ip">Ban IP</button>
+          </div>
+        `;
+        // actions
+        div.querySelector('.ban-user').addEventListener('click', () => {
+          banAction(r.reportedId, null);
+        });
+        div.querySelector('.ban-ip').addEventListener('click', () => {
+          banAction(null, r.reportedIp);
+        });
+
+        reportsListEl.appendChild(div);
+      });
     }
 
-    // 🧮 Update UI
-    function updateCount(count) {
-      userCountEl.textContent = count;
-      statusMsgEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-      userCountEl.classList.add('pulse');
-      setTimeout(() => userCountEl.classList.remove('pulse'), 800);
+    function renderBans(ips, users) {
+      bannedIpsEl.innerHTML = ips.length ? ips.map(i => `<div class="flex justify-between items-center gap-2 mb-1"><div class="text-xs">${i}</div><button class="text-xs px-2 py-1 bg-slate-700 rounded unban-ip" data-ip="${i}">Unban</button></div>`).join('') : '<div class="small text-slate-400">No banned IPs</div>';
+      bannedUsersEl.innerHTML = users.length ? users.map(u => `<div class="flex justify-between items-center gap-2 mb-1"><div class="text-xs">${u}</div><button class="text-xs px-2 py-1 bg-slate-700 rounded unban-user" data-uid="${u}">Unban</button></div>`).join('') : '<div class="small text-slate-400">No banned users</div>';
+
+      // attach handlers
+      document.querySelectorAll('.unban-ip').forEach(btn => {
+        btn.addEventListener('click', () => unbanAction(null, btn.dataset.ip));
+      });
+      document.querySelectorAll('.unban-user').forEach(btn => {
+        btn.addEventListener('click', () => unbanAction(btn.dataset.uid, null));
+      });
     }
 
-    // 🕒 Auto Refresh Toggle
+    // Controls
     toggleAutoBtn.addEventListener('click', () => {
       autoRefresh = !autoRefresh;
-      toggleAutoBtn.textContent = `Auto Refresh: ${autoRefresh ? 'ON' : 'OFF'}`;
-
+      toggleAutoBtn.textContent = autoRefresh ? 'ON' : 'OFF';
       if (autoRefresh) {
-        refreshInterval = setInterval(getUserCount, 5000);
-        getUserCount();
+        fetchUserCount();
+        fetchReports();
+        fetchBans();
+        autoIntervalId = setInterval(() => {
+          fetchUserCount();
+          fetchReports();
+          fetchBans();
+        }, AUTO_INTERVAL);
       } else {
-        clearInterval(refreshInterval);
+        clearInterval(autoIntervalId);
       }
     });
 
-    // 🔄 Manual Refresh
-    refreshBtn.addEventListener('click', getUserCount);
+    refreshReportsBtn.addEventListener('click', fetchReports);
+    clearReportsBtn.addEventListener('click', () => { reportsListEl.innerHTML = '<div class="small text-slate-400">Cleared locally</div>'; });
 
-    // 🚀 Start
+    banBtn.addEventListener('click', () => {
+      const u = banUserIdInput.value.trim() || null;
+      const ip = banIpInput.value.trim() || null;
+      if (!u && !ip) return alert('Provide userId or IP');
+      banAction(u, ip);
+      banUserIdInput.value = '';
+      banIpInput.value = '';
+      setTimeout(fetchBans, 700);
+    });
+
+    unbanBtn.addEventListener('click', () => {
+      const u = banUserIdInput.value.trim() || null;
+      const ip = banIpInput.value.trim() || null;
+      if (!u && !ip) return alert('Provide userId or IP to unban');
+      unbanAction(u, ip);
+      banUserIdInput.value = '';
+      banIpInput.value = '';
+      setTimeout(fetchBans, 700);
+    });
+
+    // init
     initWS();
   </script>
 </body>
