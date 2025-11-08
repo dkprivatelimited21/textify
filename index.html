@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Text Chat - Talk to Strangers</title>
-  <meta name="description" content="Connect with random strangers and chat anonymously">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Textify - Talk to Strangers</title>
+  <meta name="description" content="Chat instantly with random people around the world, anonymously and freely.">
   <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
@@ -17,73 +18,76 @@
     body {
       margin: 0;
       padding: 0;
+      background: linear-gradient(to bottom right, #0f172a, #1e293b);
+      font-family: 'Inter', sans-serif;
+      color: #e2e8f0;
+      height: 100vh;
       overflow: hidden;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: rgba(255,255,255,0.3);
+      border-radius: 9999px;
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100">
+
+<body>
   <div id="app" class="flex flex-col h-screen">
     <!-- Header -->
-    <div class="bg-white shadow-md p-4">
+    <header class="bg-slate-900 border-b border-slate-700 p-4">
       <div class="max-w-4xl mx-auto flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-indigo-600">Text Chat</h1>
-        <button id="actionBtn" class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+        <h1 class="text-2xl font-bold text-indigo-400">Textify</h1>
+        <button
+          id="actionBtn"
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition"
+        >
           <span id="btnIcon">▶</span>
           <span id="btnText">Start Chat</span>
         </button>
       </div>
-    </div>
+    </header>
 
-    <!-- Main Content -->
-    <div class="flex-1 overflow-hidden max-w-4xl w-full mx-auto flex flex-col">
-      <!-- Welcome Screen -->
-      <div id="welcomeScreen" class="flex-1 flex items-center justify-center">
-        <div class="text-center p-8">
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">Talk to Strangers!</h2>
-          <p class="text-gray-600 mb-6">Click "Start Chat" to connect with a random person</p>
-          <p class="text-sm text-gray-500">Anonymous • Random • Free</p>
-        </div>
+    <!-- Main -->
+    <main class="flex-1 max-w-4xl w-full mx-auto flex flex-col overflow-hidden">
+      <!-- Welcome -->
+      <div id="welcomeScreen" class="flex-1 flex flex-col items-center justify-center text-center px-6">
+        <h2 class="text-3xl font-bold text-indigo-300 mb-3">Talk to Strangers</h2>
+        <p class="text-slate-400 mb-6">Instantly connect with random people around the world.</p>
+        <p class="text-xs text-slate-500">Anonymous • Random • Free</p>
       </div>
 
-      <!-- Chat Screen -->
+      <!-- Chat -->
       <div id="chatScreen" class="hidden flex-1 flex flex-col">
-        <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
-        
-        <div class="bg-white p-4 border-t">
+        <!-- Message area -->
+        <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-800"></div>
+
+        <!-- Input -->
+        <div class="bg-slate-900 border-t border-slate-700 p-4 sticky bottom-0">
           <div class="flex gap-2">
             <input
               id="messageInput"
               type="text"
               placeholder="Type your message..."
-              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-700"
             />
             <button
               id="sendBtn"
-              class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition disabled:bg-gray-500"
             >
               Send
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 
+  <!-- Script -->
   <script>
-    // ========================================
-    // ⚠️ CHANGE THIS TO YOUR DEPLOYED BACKEND URL
-    // ========================================
-    
-    // For LOCAL testing:
-    const WS_URL = 'ws://localhost:8080';
-    
-    // For PRODUCTION (uncomment and use your deployed URL):
-    // const WS_URL = 'wss://your-app.railway.app';
-    // const WS_URL = 'wss://your-app.onrender.com';
-    // const WS_URL = 'wss://your-project.glitch.me';
-    
-    // ========================================
-    
+    const WS_URL = 'wss://textify-dy2p.onrender.com';
     let ws = null;
     let connected = false;
     let searching = false;
@@ -102,11 +106,10 @@
       sendBtn: document.getElementById('sendBtn')
     };
 
-    // Initialize WebSocket with reconnection logic
     function initWebSocket() {
       try {
         ws = new WebSocket(WS_URL);
-        
+
         ws.onopen = () => {
           console.log('Connected to server');
           reconnectAttempts = 0;
@@ -114,18 +117,14 @@
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          
           switch (data.type) {
             case 'connected':
-              console.log('Session started:', data.userId);
               break;
-              
             case 'searching':
               searching = true;
               updateUI();
               addSystemMessage('Looking for someone to chat with...');
               break;
-              
             case 'partner_found':
               searching = false;
               connected = true;
@@ -133,17 +132,14 @@
               addSystemMessage('You are now chatting with a random stranger. Say hi!');
               elements.messageInput.focus();
               break;
-              
             case 'message':
               addMessage('stranger', data.text);
               break;
-              
             case 'typing':
               showTypingIndicator(data.isTyping);
               break;
-              
             case 'partner_disconnected':
-              addSystemMessage('Stranger has disconnected.');
+              addSystemMessage('Stranger disconnected.');
               setTimeout(() => {
                 connected = false;
                 searching = false;
@@ -160,22 +156,16 @@
         };
 
         ws.onclose = () => {
-          console.log('Disconnected from server');
-          
-          // Attempt to reconnect
+          console.log('Disconnected');
           if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
-            console.log(`Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-            setTimeout(() => {
-              initWebSocket();
-            }, 2000 * reconnectAttempts);
+            setTimeout(initWebSocket, 2000 * reconnectAttempts);
           } else {
-            addSystemMessage('Connection lost. Please refresh the page.');
+            addSystemMessage('Connection lost. Please refresh.');
           }
         };
       } catch (error) {
-        console.error('Failed to create WebSocket:', error);
-        addSystemMessage('Failed to connect. Please check the server URL and try again.');
+        addSystemMessage('Failed to connect.');
       }
     }
 
@@ -185,7 +175,7 @@
         elements.chatScreen.classList.add('hidden');
         elements.btnIcon.textContent = '▶';
         elements.btnText.textContent = 'Start Chat';
-        elements.actionBtn.className = 'flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition';
+        elements.actionBtn.className = 'flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition';
         elements.messageInput.disabled = true;
         elements.sendBtn.disabled = true;
       } else {
@@ -193,7 +183,7 @@
         elements.chatScreen.classList.remove('hidden');
         elements.btnIcon.textContent = '✕';
         elements.btnText.textContent = searching ? 'Cancel' : 'Disconnect';
-        elements.actionBtn.className = 'flex items-center gap-2 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition';
+        elements.actionBtn.className = 'flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition';
         elements.messageInput.disabled = !connected;
         elements.sendBtn.disabled = !connected;
       }
@@ -202,7 +192,7 @@
     function addSystemMessage(text) {
       const div = document.createElement('div');
       div.className = 'text-center w-full';
-      div.innerHTML = `<span class="inline-block bg-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm">${escapeHtml(text)}</span>`;
+      div.innerHTML = `<span class="inline-block bg-slate-700 text-slate-300 px-4 py-2 rounded-full text-sm">${escapeHtml(text)}</span>`;
       elements.messages.appendChild(div);
       scrollToBottom();
     }
@@ -210,18 +200,16 @@
     function addMessage(type, text) {
       const div = document.createElement('div');
       div.className = `flex ${type === 'you' ? 'justify-end' : 'justify-start'}`;
-      
       const msgDiv = document.createElement('div');
       msgDiv.className = `max-w-xs px-4 py-2 rounded-lg break-words ${
-        type === 'you' 
-          ? 'bg-indigo-600 text-white' 
-          : 'bg-white text-gray-800 shadow'
+        type === 'you'
+          ? 'bg-indigo-600 text-white'
+          : 'bg-slate-700 text-slate-100'
       }`;
       msgDiv.innerHTML = `
         <div class="text-xs font-semibold mb-1 opacity-70">${type === 'you' ? 'You' : 'Stranger'}</div>
         ${escapeHtml(text)}
       `;
-      
       div.appendChild(msgDiv);
       elements.messages.appendChild(div);
       scrollToBottom();
@@ -230,18 +218,18 @@
     function showTypingIndicator(show) {
       const existing = document.getElementById('typingIndicator');
       if (existing) existing.remove();
-      
+
       if (show) {
         const div = document.createElement('div');
         div.id = 'typingIndicator';
         div.className = 'flex justify-start';
         div.innerHTML = `
-          <div class="bg-white text-gray-800 shadow px-4 py-2 rounded-lg">
+          <div class="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg">
             <div class="text-xs font-semibold mb-1 opacity-70">Stranger</div>
             <div class="flex gap-1">
-              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
+              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
             </div>
           </div>
         `;
@@ -263,16 +251,13 @@
     function sendMessage() {
       const text = elements.messageInput.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !connected) return;
-      
       addMessage('you', text);
       ws.send(JSON.stringify({ type: 'send_message', text }));
       elements.messageInput.value = '';
-      
       if (typingTimeout) clearTimeout(typingTimeout);
       ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
     }
 
-    // Event Listeners
     elements.actionBtn.addEventListener('click', () => {
       if (!connected && !searching) {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -293,37 +278,27 @@
     });
 
     elements.sendBtn.addEventListener('click', sendMessage);
-
     elements.messageInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && connected) {
-        sendMessage();
-      }
+      if (e.key === 'Enter' && connected) sendMessage();
     });
 
     elements.messageInput.addEventListener('input', () => {
       if (!ws || ws.readyState !== WebSocket.OPEN || !connected) return;
-      
       ws.send(JSON.stringify({ type: 'typing', isTyping: true }));
-      
       if (typingTimeout) clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (ws && ws.readyState === WebSocket.OPEN)
           ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
-        }
       }, 1000);
     });
 
-    // Initialize on page load
     window.addEventListener('load', () => {
       initWebSocket();
       updateUI();
     });
 
-    // Clean up on page unload
     window.addEventListener('beforeunload', () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
     });
   </script>
 </body>

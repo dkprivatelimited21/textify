@@ -1,6 +1,7 @@
-// server.js - Deploy-Ready WebSocket Server for Omegle Clone
+// server.js - WebSocket Server for Textify with Admin User Count Feature
 const WebSocket = require('ws');
 const http = require('http');
+require('dotenv').config(); // Load ADMIN_KEY from .env
 
 const server = http.createServer((req, res) => {
   // Basic health check endpoint
@@ -9,7 +10,7 @@ const server = http.createServer((req, res) => {
     res.end('Server is running');
     return;
   }
-  
+
   // CORS headers for production
   res.writeHead(200, {
     'Content-Type': 'text/plain',
@@ -28,6 +29,10 @@ function generateId() {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
 
+function getOnlineCount() {
+  return wss.clients.size;
+}
+
 wss.on('connection', (socket, req) => {
   const userId = generateId();
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -39,22 +44,35 @@ wss.on('connection', (socket, req) => {
   socket.on('message', (data) => {
     try {
       const message = JSON.parse(data);
-      
+
       switch (message.type) {
         case 'find_partner':
           findPartner(userId, socket);
           break;
-          
+
         case 'send_message':
           sendToPartner(userId, message.text);
           break;
-          
+
         case 'disconnect_chat':
           disconnectPair(userId);
           break;
-          
+
         case 'typing':
           notifyTyping(userId, message.isTyping);
+          break;
+
+        // ✅ Admin-only: get live user count securely
+        case 'get_user_count':
+          if (message.adminKey === process.env.ADMIN_KEY) {
+            socket.send(JSON.stringify({
+              type: 'user_count',
+              count: getOnlineCount()
+            }));
+            console.log(`Admin requested user count: ${getOnlineCount()}`);
+          } else {
+            console.warn(`Unauthorized admin count request from ${userId}`);
+          }
           break;
       }
     } catch (err) {
@@ -96,29 +114,25 @@ wss.on('close', () => {
 
 function findPartner(userId, socket) {
   if (waitingUser && waitingUser.id !== userId) {
-    // Match with waiting user
     const partnerId = waitingUser.id;
     const partnerSocket = waitingUser.socket;
-    
-    // Check if partner socket is still open
+
+    // If waiting user disconnected
     if (partnerSocket.readyState !== WebSocket.OPEN) {
       waitingUser = { id: userId, socket };
       socket.send(JSON.stringify({ type: 'searching' }));
       return;
     }
-    
-    // Store connections
+
     activeConnections.set(userId, { socket, partnerId });
     activeConnections.set(partnerId, { socket: partnerSocket, partnerId: userId });
-    
-    // Notify both users
+
     socket.send(JSON.stringify({ type: 'partner_found' }));
     partnerSocket.send(JSON.stringify({ type: 'partner_found' }));
-    
+
     console.log(`Paired: ${userId} <-> ${partnerId}`);
     waitingUser = null;
   } else {
-    // Add to waiting list
     waitingUser = { id: userId, socket };
     socket.send(JSON.stringify({ type: 'searching' }));
     console.log(`User ${userId} is waiting for a partner`);
@@ -130,10 +144,7 @@ function sendToPartner(userId, text) {
   if (connection && connection.partnerId) {
     const partnerConnection = activeConnections.get(connection.partnerId);
     if (partnerConnection && partnerConnection.socket.readyState === WebSocket.OPEN) {
-      partnerConnection.socket.send(JSON.stringify({
-        type: 'message',
-        text: text
-      }));
+      partnerConnection.socket.send(JSON.stringify({ type: 'message', text }));
     }
   }
 }
@@ -143,10 +154,7 @@ function notifyTyping(userId, isTyping) {
   if (connection && connection.partnerId) {
     const partnerConnection = activeConnections.get(connection.partnerId);
     if (partnerConnection && partnerConnection.socket.readyState === WebSocket.OPEN) {
-      partnerConnection.socket.send(JSON.stringify({
-        type: 'typing',
-        isTyping: isTyping
-      }));
+      partnerConnection.socket.send(JSON.stringify({ type: 'typing', isTyping }));
     }
   }
 }
@@ -155,32 +163,26 @@ function disconnectPair(userId) {
   const connection = activeConnections.get(userId);
   if (connection && connection.partnerId) {
     const partnerConnection = activeConnections.get(connection.partnerId);
-    
-    // Notify partner
+
     if (partnerConnection && partnerConnection.socket.readyState === WebSocket.OPEN) {
-      partnerConnection.socket.send(JSON.stringify({
-        type: 'partner_disconnected'
-      }));
+      partnerConnection.socket.send(JSON.stringify({ type: 'partner_disconnected' }));
       activeConnections.delete(connection.partnerId);
     }
-    
+
     activeConnections.delete(userId);
     console.log(`Disconnected pair: ${userId} <-> ${connection.partnerId}`);
   }
 }
 
 function handleDisconnection(userId) {
-  // Remove from waiting list
   if (waitingUser && waitingUser.id === userId) {
     waitingUser = null;
   }
-  
-  // Disconnect from partner
   disconnectPair(userId);
 }
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-  console.log(`WebSocket server is running on port ${PORT}`);
-  console.log(`Health check available at http://localhost:${PORT}/health`);
+  console.log(`✅ WebSocket server is running on port ${PORT}`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
 });
