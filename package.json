@@ -1,0 +1,23 @@
+{
+  "name": "omegle-clone-backend",
+  "version": "1.0.0",
+  "description": "WebSocket server for Omegle clone chat application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "websocket",
+    "chat",
+    "omegle"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
