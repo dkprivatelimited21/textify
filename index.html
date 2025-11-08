@@ -1,359 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Textify - Talk to Strangers</title>
   <meta name="description" content="Chat instantly with random people around the world, anonymously and freely.">
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Open Graph preview (adjust URL to your deployment) -->
+  <meta property="og:title" content="Textify - Talk to Strangers" />
+  <meta property="og:description" content="Chat instantly with random people around the world, anonymously and freely." />
+  <meta property="og:image" content="https://yourdomain.com/preview.jpg" />
+  <meta property="og:type" content="website" />
+
   <style>
-    @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-.shake {
-  animation: shake 0.3s;
-}
-    .animate-bounce { animation: bounce 0.6s infinite; }
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(to bottom right, #0f172a, #1e293b);
-      font-family: 'Inter', sans-serif;
-      color: #e2e8f0;
-      height: 100vh;
-      overflow: hidden;
-    }
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-thumb {
-      background-color: rgba(255,255,255,0.3);
-      border-radius: 9999px;
-    }
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 50;
-    }
+    :root { --bg1:#0f172a; --bg2:#1e293b; }
+    body { margin:0; padding:0; min-height:100vh; background:linear-gradient(to bottom right,var(--bg1),var(--bg2)); font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial; color:#e2e8f0; display:flex; flex-direction:column; }
+    header{backdrop-filter:blur(6px)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:60}
+    ::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.18);border-radius:9999px}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}} .shake{animation:shake .3s}
+    .chat-bubble{word-wrap:break-word;max-width:70%}
+    @media (max-width:640px){.chat-bubble{max-width:85%;font-size:0.95rem}.center-buttons{gap:.5rem}.center-buttons button{padding:.6rem 1rem}}
+    .local-video{width:120px;height:90px;position:fixed;right:12px;bottom:96px;border-radius:8px;object-fit:cover;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.06)}
+    .remote-video{position:fixed;inset:0;z-index:20;width:100%;height:100%;object-fit:cover;background:black}
+    #messages{position:relative;z-index:30}
+    .center-wrap{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;height:100%;padding:1rem}
+    .center-buttons{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
   </style>
 </head>
-
 <body>
-  <div id="app" class="flex flex-col h-screen">
-    <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-700 p-4">
-      <div class="max-w-4xl mx-auto flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-indigo-400">Textify</h1>
-        <button
-          id="actionBtn"
-          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition"
-        >
-          <span id="btnIcon">▶</span>
-          <span id="btnText">Start Chat</span>
-        </button>
+  <header class="bg-slate-900/60 border-b border-slate-700 p-3 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-bold text-indigo-400">Textify</h1>
+        <div id="statusPill" class="text-xs text-slate-400 hidden">Connected</div>
       </div>
-    </header>
-
-    <!-- Main -->
-    <main class="flex-1 max-w-4xl w-full mx-auto flex flex-col overflow-hidden">
-      <!-- Welcome -->
-      <div id="welcomeScreen" class="flex-1 flex flex-col items-center justify-center text-center px-6">
-        <h2 class="text-3xl font-bold text-indigo-300 mb-3">Talk to Strangers</h2>
-        <p class="text-slate-400 mb-6">Instantly connect with random people around the world.</p>
-        <p class="text-xs text-slate-500">Anonymous • Random • Free</p>
+      <div class="flex items-center gap-3">
+        <button id="headerReportBtn" class="hidden text-sm px-3 py-1 rounded bg-red-700 hover:bg-red-800">⚠ Report</button>
+        <button id="cancelBtn" class="hidden text-sm px-3 py-1 rounded bg-slate-700 hover:bg-slate-600">Cancel</button>
       </div>
+    </div>
+  </header>
 
-      <!-- Chat -->
-      <div id="chatScreen" class="hidden flex-1 flex flex-col">
-        <!-- Message area -->
-        <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-800"></div>
+  <main class="flex-1 w-full max-w-4xl mx-auto flex flex-col">
+    <section id="welcomeScreen" class="flex-1">
+      <div class="center-wrap">
+        <div class="text-center">
+          <h2 class="text-2xl font-bold text-indigo-300 mb-2">Talk to Strangers</h2>
+          <p class="text-sm text-slate-400 mb-3">Anonymous • Random • Free</p>
+        </div>
 
-        <!-- Input -->
-        <div class="bg-slate-900 border-t border-slate-700 p-4 sticky bottom-0 flex items-center gap-3">
-          <button id="reportBtn" class="text-sm px-3 py-2 rounded bg-red-700 hover:bg-red-800 hidden">⚠ Report</button>
-          <div class="flex gap-2 flex-1">
-            <input
-              id="messageInput"
-              type="text"
-              placeholder="Type your message..."
-              class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-700"
-            />
-            <button
-              id="sendBtn"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition disabled:bg-gray-500"
-            >
-              Send
-            </button>
-          </div>
+        <div class="center-buttons">
+          <button id="startChatBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-6 py-3 text-lg">Start Chat</button>
+          <button id="startVideoBtn" class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-3 text-lg">Start Video Call</button>
+        </div>
+
+        <div id="newPartnerWrapper" class="hidden mt-3">
+          <button id="newPartnerBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white rounded-md px-4 py-2">New Partner</button>
         </div>
       </div>
-    </main>
-  </div>
+    </section>
 
-  <!-- Report Modal -->
+    <section id="chatScreen" class="hidden flex-1 flex flex-col">
+      <div id="messages" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-slate-800"></div>
+
+      <div class="bg-slate-900 border-t border-slate-700 p-3 flex items-center gap-2">
+        <button id="reportBtn" class="text-sm px-3 py-2 rounded bg-red-700 hover:bg-red-800 hidden">⚠ Report</button>
+        <input id="messageInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-700" placeholder="Type a message..." />
+        <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Send</button>
+        <button id="videoToggleBtn" class="ml-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg">🎥 Video</button>
+      </div>
+    </section>
+  </main>
+
   <div id="reportModal" class="modal hidden">
-    <div class="bg-slate-800 p-6 rounded-xl w-80 shadow-lg border border-slate-700">
-      <h3 class="text-lg font-semibold mb-4 text-red-400">Report User</h3>
-      <label class="block mb-2 text-sm">Reason:</label>
-      <select id="reportReason" class="w-full mb-3 bg-slate-900 border border-slate-600 text-white rounded px-3 py-2">
+    <div class="bg-slate-800 p-5 rounded-xl w-80 border border-slate-700">
+      <h3 class="text-lg font-semibold text-red-400 mb-3">Report User</h3>
+      <label class="block mb-2 text-sm">Reason</label>
+      <select id="reportReason" class="w-full mb-2 bg-slate-900 border border-slate-600 text-white rounded px-2 py-2 text-sm">
         <option value="harassment">Harassment / Abuse</option>
         <option value="inappropriate">Inappropriate Content</option>
         <option value="spam">Spam / Advertising</option>
         <option value="other">Other</option>
       </select>
-      <textarea id="reportDetails" rows="2" placeholder="Add details (optional)"
-        class="w-full mb-4 bg-slate-900 border border-slate-600 text-white rounded px-3 py-2 resize-none"></textarea>
+      <textarea id="reportDetails" rows="2" placeholder="Details (optional)" class="w-full mb-3 bg-slate-900 border border-slate-600 text-white rounded px-2 py-2 text-sm"></textarea>
       <div class="flex justify-end gap-2">
-        <button id="cancelReport" class="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600">Cancel</button>
-        <button id="submitReport" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700">Submit</button>
+        <button id="cancelReport" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="submitReport" class="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-sm">Submit</button>
       </div>
     </div>
   </div>
 
-  <!-- Script -->
   <script>
-    const WS_URL = 'wss://textify-dy2p.onrender.com';
-    let ws = null;
-    let connected = false;
-    let searching = false;
-    let typingTimeout = null;
-    let userId = null;
-    let partnerId = null;
+  /* Frontend: chat + signaling for WebRTC (Option 1) */
+  const WS_URL = 'wss://textify-dy2p.onrender.com'; // change to your WS endpoint
+  const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    const elements = {
-      actionBtn: document.getElementById('actionBtn'),
-      btnIcon: document.getElementById('btnIcon'),
-      btnText: document.getElementById('btnText'),
-      welcomeScreen: document.getElementById('welcomeScreen'),
-      chatScreen: document.getElementById('chatScreen'),
-      messages: document.getElementById('messages'),
-      messageInput: document.getElementById('messageInput'),
-      sendBtn: document.getElementById('sendBtn'),
-      reportBtn: document.getElementById('reportBtn'),
-      reportModal: document.getElementById('reportModal'),
-      reportReason: document.getElementById('reportReason'),
-      reportDetails: document.getElementById('reportDetails'),
-      cancelReport: document.getElementById('cancelReport'),
-      submitReport: document.getElementById('submitReport')
+  let ws = null, userId = null, partnerId = null, connected = false, searching = false;
+  let localStream = null, pc = null, remoteVideoEl = null, localVideoEl = null, inVideoMode = false, typingTimeout = null;
+
+  const startChatBtn = document.getElementById('startChatBtn');
+  const startVideoBtn = document.getElementById('startVideoBtn');
+  const newPartnerBtn = document.getElementById('newPartnerBtn');
+  const newPartnerWrapper = document.getElementById('newPartnerWrapper');
+
+  const welcomeScreen = document.getElementById('welcomeScreen');
+  const chatScreen = document.getElementById('chatScreen');
+  const messages = document.getElementById('messages');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const videoToggleBtn = document.getElementById('videoToggleBtn');
+  const reportBtn = document.getElementById('reportBtn');
+  const reportModal = document.getElementById('reportModal');
+  const cancelReport = document.getElementById('cancelReport');
+  const submitReport = document.getElementById('submitReport');
+  const reportReason = document.getElementById('reportReason');
+  const reportDetails = document.getElementById('reportDetails');
+
+  const headerReportBtn = document.getElementById('headerReportBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const statusPill = document.getElementById('statusPill');
+
+  const BAD_WORDS = ['idiot','stupid','kill','die','hate you','bitch','slut','racist','fag','retard'];
+  function containsBadWord(text){ if(!text) return false; const lower=text.toLowerCase(); return BAD_WORDS.some(w => lower.includes(w)); }
+
+  function initWebSocket(){
+    if(ws && ws.readyState === WebSocket.OPEN) return;
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => console.log('WS connected');
+    ws.onmessage = async (ev) => {
+      const data = JSON.parse(ev.data);
+      switch(data.type){
+        case 'connected': userId = data.userId; break;
+        case 'searching': searching=true; updateUI(); addSystemMessage('Looking for someone to chat with...'); break;
+        case 'partner_found':
+          searching=false; connected=true; partnerId=data.partnerId||'unknown';
+          clearChatArea(); stopVideoIfAny(false); updateUI(); addSystemMessage('You are now connected. Say hi!');
+          break;
+        case 'message': addMessage('stranger', data.text); break;
+        case 'typing': showTypingIndicator(data.isTyping); break;
+        case 'warning': addSystemMessage(data.text||'⚠ Please avoid harmful language.'); messageInput.classList.add('border-red-500','shake'); setTimeout(()=>messageInput.classList.remove('border-red-500','shake'),500); break;
+        case 'partner_disconnected': addSystemMessage('Stranger disconnected.'); onPartnerLeft(); break;
+
+        // WebRTC signaling
+        case 'video_offer':
+          await handleVideoOffer(data.offer, data.from);
+          break;
+        case 'video_answer':
+          await handleVideoAnswer(data.answer);
+          break;
+        case 'ice_candidate':
+          await handleRemoteIce(data.candidate);
+          break;
+
+        case 'banned':
+          addSystemMessage('⚠ You have been banned: ' + (data.reason||'Violation'));
+          ws.close();
+          break;
+        default: console.warn('Unknown ws message', data.type);
+      }
     };
 
-    function initWebSocket() {
-      ws = new WebSocket(WS_URL);
-      ws.onopen = () => console.log('Connected to server');
-
-      ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  switch (data.type) {
-    case 'connected':
-      userId = data.userId;
-      break;
-
-    case 'searching':
-      searching = true;
-      updateUI();
-      addSystemMessage('Looking for someone to chat with...');
-      break;
-
-    case 'partner_found':
-      searching = false;
-      connected = true;
-      partnerId = data.partnerId || "unknown";
-
-      // 🧹 Clear chat and extras
-      elements.messages.innerHTML = '';
-      showTypingIndicator(false);
-      elements.reportModal.classList.add('hidden');
-
-      updateUI();
-      addSystemMessage('You are now chatting with a random stranger. Say hi!');
-      elements.messageInput.focus();
-      break;
-
-    case 'message':
-      addMessage('stranger', data.text);
-      break;
-
-    case 'typing':
-      showTypingIndicator(data.isTyping);
-      break;
-
-    // ⚠️ New anti-bully warning handler
-    case 'warning':
-      addSystemMessage(data.text || '⚠ Please avoid using harmful language.');
-      // Optional: highlight input box for better feedback
-      elements.messageInput.classList.add('border-red-500');
-      setTimeout(() => elements.messageInput.classList.remove('border-red-500'), 1000);
-      break;
-
-    case 'partner_disconnected':
-      addSystemMessage('Stranger disconnected.');
-      connected = false;
-      partnerId = null;
-      updateUI();
-      break;
-
-    case 'banned':
-      addSystemMessage('⚠ You have been banned: ' + (data.reason || 'Violation'));
-      ws.close();
-      break;
-
-    default:
-      console.warn('Unknown message type:', data.type);
-      break;
+    ws.onclose = () => { addSystemMessage('Connection lost.'); connected=false; searching=false; updateUI(); stopVideoIfAny(true); };
+    ws.onerror = (err) => console.error('WS error', err);
   }
-};
 
+  function updateUI(){
+    const paired = (connected||searching);
+    welcomeScreen.classList.toggle('hidden', paired);
+    chatScreen.classList.toggle('hidden', !paired);
+    headerReportBtn.classList.toggle('hidden', !connected);
+    reportBtn.classList.toggle('hidden', !connected);
+    cancelBtn.classList.toggle('hidden', !paired);
+    statusPill.classList.toggle('hidden', !paired);
+    messageInput.disabled = !connected; sendBtn.disabled = !connected; videoToggleBtn.disabled = !connected;
+    newPartnerWrapper.classList.add('hidden');
+  }
 
-      ws.onclose = () => {
-        addSystemMessage('Connection closed.');
-        connected = false;
-        searching = false;
-        updateUI();
-      };
-    }
+  function clearChatArea(){ messages.innerHTML = ''; removeTypingIndicator(); }
+  function addSystemMessage(text){ const d=document.createElement('div'); d.className='text-center'; d.innerHTML=`<span class="inline-block bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-xs">${escapeHtml(text)}</span>`; messages.appendChild(d); scrollToBottom(); }
+  function addMessage(type,text){ const row=document.createElement('div'); row.className=`flex ${type==='you'?'justify-end':'justify-start'}`; const bubble=document.createElement('div'); bubble.className=`chat-bubble px-3 py-2 rounded-lg ${type==='you'?'bg-indigo-600 text-white':'bg-slate-700 text-slate-100'}`; bubble.innerHTML=`<div class="text-xs font-semibold mb-1 opacity-70">${type==='you'?'You':'Stranger'}</div>${escapeHtml(text)}`; row.appendChild(bubble); messages.appendChild(row); scrollToBottom(); }
+  function showTypingIndicator(show){ removeTypingIndicator(); if(!show) return; const div=document.createElement('div'); div.id='typingIndicator'; div.className='flex justify-start'; div.innerHTML=`<div class="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg"><div class="text-xs font-semibold mb-1 opacity-70">Stranger</div><div class="flex gap-1"><span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span><span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay:0.1s"></span><span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay:0.2s"></span></div></div>`; messages.appendChild(div); scrollToBottom(); }
+  function removeTypingIndicator(){ const ex=document.getElementById('typingIndicator'); if(ex) ex.remove(); }
+  function scrollToBottom(){ messages.scrollTop = messages.scrollHeight; }
+  function escapeHtml(t){ const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
-    function updateUI() {
-      if (!connected && !searching) {
-        elements.welcomeScreen.classList.remove('hidden');
-        elements.chatScreen.classList.add('hidden');
-        elements.btnIcon.textContent = '▶';
-        elements.btnText.textContent = 'Start Chat';
-        elements.actionBtn.className = 'flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition';
-        elements.messageInput.disabled = true;
-        elements.sendBtn.disabled = true;
-        elements.reportBtn.classList.add('hidden');
-      } else {
-        elements.welcomeScreen.classList.add('hidden');
-        elements.chatScreen.classList.remove('hidden');
-        elements.btnIcon.textContent = '✕';
-        elements.btnText.textContent = searching ? 'Cancel' : 'Disconnect';
-        elements.actionBtn.className = 'flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition';
-        elements.messageInput.disabled = !connected;
-        elements.sendBtn.disabled = !connected;
-        elements.reportBtn.classList.toggle('hidden', !connected);
-      }
-    }
+  function sendMessage(){
+    const text = messageInput.value.trim();
+    if(!text || !ws || ws.readyState!==WebSocket.OPEN || !connected) return;
+    if(containsBadWord(text)){ addSystemMessage('⚠ Your message looks abusive and was blocked.'); ws.send(JSON.stringify({ type:'report_user', reportedId:partnerId, reason:'Auto moderation: abusive message', message:text })); messageInput.value=''; return; }
+    addMessage('you', text);
+    ws.send(JSON.stringify({ type:'send_message', text }));
+    messageInput.value=''; ws.send(JSON.stringify({ type:'typing', isTyping:false }));
+  }
 
-    function addSystemMessage(text) {
-      const div = document.createElement('div');
-      div.className = 'text-center w-full';
-      div.innerHTML = `<span class="inline-block bg-slate-700 text-slate-300 px-4 py-2 rounded-full text-sm">${escapeHtml(text)}</span>`;
-      elements.messages.appendChild(div);
-      scrollToBottom();
-    }
+  function openReportModal(){ reportModal.classList.remove('hidden'); }
+  function closeReportModal(){ reportModal.classList.add('hidden'); }
+  function submitReportAction(){ const reason=reportReason.value; const details=reportDetails.value.trim(); const full=details?`${reason}: ${details}`:reason; if(partnerId && ws && ws.readyState===WebSocket.OPEN){ ws.send(JSON.stringify({ type:'report_user', reportedId:partnerId, reason:full })); addSystemMessage('⚠ Report submitted. Thank you.'); } reportDetails.value=''; closeReportModal(); }
 
-    function addMessage(type, text) {
-      const div = document.createElement('div');
-      div.className = `flex ${type === 'you' ? 'justify-end' : 'justify-start'}`;
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `max-w-xs px-4 py-2 rounded-lg break-words ${
-        type === 'you'
-          ? 'bg-indigo-600 text-white'
-          : 'bg-slate-700 text-slate-100'
-      }`;
-      msgDiv.innerHTML = `
-        <div class="text-xs font-semibold mb-1 opacity-70">${type === 'you' ? 'You' : 'Stranger'}</div>
-        ${escapeHtml(text)}
-      `;
-      div.appendChild(msgDiv);
-      elements.messages.appendChild(div);
-      scrollToBottom();
-    }
+  function onPartnerLeft(){ connected=false; partnerId=null; stopVideoIfAny(true); updateUI(); newPartnerWrapper.classList.remove('hidden'); addSystemMessage('You can find a new partner without leaving this page.'); }
 
-    function showTypingIndicator(show) {
-      const existing = document.getElementById('typingIndicator');
-      if (existing) existing.remove();
-      if (show) {
-        const div = document.createElement('div');
-        div.id = 'typingIndicator';
-        div.className = 'flex justify-start';
-        div.innerHTML = `
-          <div class="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg">
-            <div class="text-xs font-semibold mb-1 opacity-70">Stranger</div>
-            <div class="flex gap-1">
-              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
-              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-              <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-            </div>
-          </div>`;
-        elements.messages.appendChild(div);
-        scrollToBottom();
-      }
-    }
+  function findPartnerAction(){ initWebSocket(); if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({ type:'find_partner' })); else ws.addEventListener('open', ()=>ws.send(JSON.stringify({ type:'find_partner' })), { once:true }); newPartnerWrapper.classList.add('hidden'); }
 
-    function scrollToBottom() {
-      elements.messages.scrollTop = elements.messages.scrollHeight;
-    }
+  function cancelSession(){ if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({ type:'disconnect_chat' })); connected=false; searching=false; partnerId=null; updateUI(); clearChatArea(); stopVideoIfAny(true); welcomeScreen.classList.remove('hidden'); chatScreen.classList.add('hidden'); }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
+  async function startLocalVideoPreview(){ try{ localStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true }); if(!localVideoEl){ localVideoEl = document.createElement('video'); localVideoEl.muted = true; localVideoEl.autoplay = true; localVideoEl.className = 'local-video'; document.body.appendChild(localVideoEl); } localVideoEl.srcObject = localStream; inVideoMode = true; }catch(err){ console.error('getUserMedia error',err); addSystemMessage('Could not access camera/microphone.'); inVideoMode=false; } }
 
-    function sendMessage() {
-      const text = elements.messageInput.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN || !connected) return;
-      addMessage('you', text);
-      ws.send(JSON.stringify({ type: 'send_message', text }));
-      elements.messageInput.value = '';
-      ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
-    }
+  function stopLocalVideoPreview(){ if(localVideoEl){ localVideoEl.remove(); localVideoEl=null; } if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; } inVideoMode=false; }
 
-    elements.actionBtn.addEventListener('click', () => {
-      if (!connected && !searching) {
-        ws.send(JSON.stringify({ type: 'find_partner' }));
-      } else {
-        ws.send(JSON.stringify({ type: 'disconnect_chat' }));
-        connected = false;
-        searching = false;
-        updateUI();
-        elements.messages.innerHTML = '';
-      }
-    });
+  async function createPeerConnection(){
+    pc = new RTCPeerConnection(ICE_SERVERS);
+    pc.onicecandidate = (ev)=>{ if(ev.candidate && ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({ type:'ice_candidate', candidate:ev.candidate })); };
+    pc.ontrack = (ev)=>{ if(!remoteVideoEl){ remoteVideoEl=document.createElement('video'); remoteVideoEl.autoplay=true; remoteVideoEl.className='remote-video'; document.body.appendChild(remoteVideoEl); } remoteVideoEl.srcObject = ev.streams[0]; };
+    pc.onconnectionstatechange = ()=>{ if(pc && (pc.connectionState==='disconnected' || pc.connectionState==='failed' || pc.connectionState==='closed')){/* defensive cleanup handled elsewhere */} };
+    if(localStream) localStream.getTracks().forEach(track=>pc.addTrack(track, localStream));
+    return pc;
+  }
 
-    elements.sendBtn.addEventListener('click', sendMessage);
-    elements.messageInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && connected) sendMessage();
-    });
+  async function startVideoCall(){ if(!connected){ addSystemMessage('You must be connected to someone to start a video call.'); return; } await startLocalVideoPreview(); pc = await createPeerConnection(); if(localStream) localStream.getTracks().forEach(track=>pc.addTrack(track, localStream)); try{ const offer = await pc.createOffer(); await pc.setLocalDescription(offer); ws.send(JSON.stringify({ type:'video_offer', offer })); }catch(err){ console.error('offer failed',err); addSystemMessage('Video offer failed.'); } }
 
-    elements.messageInput.addEventListener('input', () => {
-      if (!ws || ws.readyState !== WebSocket.OPEN || !connected) return;
-      ws.send(JSON.stringify({ type: 'typing', isTyping: true }));
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        ws.send(JSON.stringify({ type: 'typing', isTyping: false }));
-      }, 1000);
-    });
+  async function handleVideoOffer(offer, from){
+    try{
+      if(!localStream) await startLocalVideoPreview();
+      pc = await createPeerConnection();
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      if(localStream) localStream.getTracks().forEach(track=>pc.addTrack(track, localStream));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      ws.send(JSON.stringify({ type:'video_answer', answer }));
+      addSystemMessage('Video call started.');
+    }catch(err){ console.error('handleVideoOffer err',err); addSystemMessage('Failed to accept video call.'); }
+  }
 
-    // Reporting System
-    elements.reportBtn.addEventListener('click', () => {
-      elements.reportModal.classList.remove('hidden');
-    });
+  async function handleVideoAnswer(answer){ if(!pc) return; try{ await pc.setRemoteDescription(new RTCSessionDescription(answer)); addSystemMessage('Video connected.'); }catch(err){ console.error('setRemoteDescription err',err); } }
 
-    elements.cancelReport.addEventListener('click', () => {
-      elements.reportModal.classList.add('hidden');
-    });
+  async function handleRemoteIce(candidate){ if(!pc) return; try{ await pc.addIceCandidate(candidate); }catch(err){ console.warn('addIceCandidate error',err); } }
 
-    elements.submitReport.addEventListener('click', () => {
-      const reason = elements.reportReason.value;
-      const details = elements.reportDetails.value.trim();
-      const fullReason = details ? `${reason}: ${details}` : reason;
-      if (partnerId && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'report_user', reportedId: partnerId, reason: fullReason }));
-        addSystemMessage('⚠ Report submitted. Thank you for keeping Textify safe.');
-      }
-      elements.reportModal.classList.add('hidden');
-      elements.reportDetails.value = '';
-    });
+  function stopVideoIfAny(fullCleanup=true){
+    if(remoteVideoEl){ remoteVideoEl.remove(); remoteVideoEl=null; }
+    if(localVideoEl){ localVideoEl.remove(); localVideoEl=null; }
+    if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+    if(pc){ try{ pc.close(); }catch(e){} pc=null; }
+    inVideoMode=false;
+    if(fullCleanup) addSystemMessage('Video stopped.');
+  }
 
-    window.addEventListener('load', initWebSocket);
+  function toggleVideo(){ if(inVideoMode) stopVideoIfAny(true); else startVideoCall(); }
+  function showNewPartnerButton(){ newPartnerWrapper.classList.remove('hidden'); }
+
+  // events
+  initWebSocket();
+  startChatBtn.addEventListener('click', ()=>{ initWebSocket(); findPartnerAction(); });
+  startVideoBtn.addEventListener('click', ()=>{ initWebSocket(); findPartnerAction(); addSystemMessage('Searching for partner for video call...'); });
+  newPartnerBtn.addEventListener('click', ()=>{ findPartnerAction(); newPartnerWrapper.classList.add('hidden'); });
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter') sendMessage(); });
+  messageInput.addEventListener('input', ()=>{ if(ws && ws.readyState===WebSocket.OPEN && connected){ ws.send(JSON.stringify({ type:'typing', isTyping:true })); clearTimeout(typingTimeout); typingTimeout=setTimeout(()=>ws.send(JSON.stringify({ type:'typing', isTyping:false })),900); } });
+  headerReportBtn.addEventListener('click', openReportModal); reportBtn.addEventListener('click', openReportModal);
+  cancelReport.addEventListener('click', closeReportModal); submitReport.addEventListener('click', submitReportAction);
+  cancelBtn.addEventListener('click', cancelSession); videoToggleBtn.addEventListener('click', ()=>{ if(!connected) addSystemMessage('You need a partner to start video.'); else toggleVideo(); });
+  newPartnerWrapper.classList.add('hidden');
+  window.addEventListener('beforeunload', ()=>{ try{ if(ws && ws.readyState===WebSocket.OPEN) ws.close(); }catch(e){} stopVideoIfAny(true); });
+
+  // ensure status
+  setInterval(()=>{ if(connected) statusPill.textContent='Connected'; else if(searching) statusPill.textContent='Searching...'; else statusPill.textContent=''; },800);
+
+  // expose for server signals
+  window.onPartnerLeft = onPartnerLeft;
   </script>
 </body>
 </html>
